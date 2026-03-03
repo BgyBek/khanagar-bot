@@ -1,28 +1,32 @@
 import asyncio
 import logging
 
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Bot, Dispatcher
+from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, CallbackQuery
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
+from aiogram.enums import ParseMode
 
 # ── Logging (very helpful when debugging) ────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ── Paste YOUR REAL BOT TOKEN here ───────────────────────────────────────
-bot = Bot(token="8627766359:AAG7H3VVYerh3MttM41RJaFM6z2OmwXj96M")
-storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
+TOKEN = "8627766359:AAG7H3VVYerh3MttM41RJaFM6z2OmwXj96M"  # ← CHANGE THIS!!!
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
 
 
 # ── Main bottom menu ─────────────────────────────────────────────────────
 def get_main_menu():
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(KeyboardButton("🍳 Breakfast"))
-    kb.add(KeyboardButton("🌙 Dinner"))
-    kb.add(KeyboardButton("🍷 Drinks"))
-    kb.add(KeyboardButton("ℹ️ About"))
-    return kb
+    builder = ReplyKeyboardBuilder()
+    builder.button(text="🍳 Breakfast")
+    builder.button(text="🌙 Dinner")
+    builder.button(text="🍷 Drinks & Cocktails")
+    builder.button(text="ℹ️ About")
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True, one_time_keyboard=False)
 
 
 # ── Inline sub-menu for each category ────────────────────────────────────
@@ -52,33 +56,55 @@ def get_category_inline(category: str):
 
 
 # ── Start / Menu command ─────────────────────────────────────────────────
-@dp.message_handler(commands=['start'])
-async def start(message: types.Message):
+@dp.message(CommandStart())
+@dp.message(Command("menu"))
+async def cmd_start_menu(message: Message):
     await message.answer(
-        "Welcome to **KHANAGAR** at Big Sky Lodge, Terelj 🌄\n"
+        "Welcome to **KHANAGAR**\n"
+        "Big Sky Lodge, Terelj 🌄\n"
         "Great table under the big sky.\n\n"
         "Choose category:",
         reply_markup=get_main_menu(),
-        parse_mode="Markdown"
+        parse_mode=ParseMode.MARKDOWN
     )
 
 
 # ── Category buttons (Breakfast / Dinner / Drinks) ───────────────────────
-@dp.message_handler(text=["🍳 Breakfast", "🌙 Dinner", "🍷 Drinks"])
-async def show_category(message: types.Message):
-    if message.text == "🍳 Breakfast":
-        text = "Breakfast menu coming soon..."
-    elif message.text == "🌙 Dinner":
-        text = "Dinner menu coming soon..."
+@dp.message(lambda m: m.text in ["🍳 Breakfast", "🌙 Dinner", "🍷 Drinks & Cocktails"])
+async def show_category(message: Message):
+    if "Breakfast" in message.text:
+        title = "Breakfast (7:00 – 10:00)"
+        cat = "breakfast"
+    elif "Dinner" in message.text:
+        title = "Dinner (18:00 – 22:00)"
+        cat = "dinner"
     else:
-        text = "Drinks menu coming soon..."
-    await message.answer(text)
+        title = "Drinks & Beverages"
+        cat = "drinks"
+
+    await message.answer(
+        f"**{title}**\nChoose section:",
+        reply_markup=get_category_inline(cat),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
 
 # ── All callback handling ─────────────────────────────────────────────────
-@dp.callback_query_handler()
-async def callback(call: types.CallbackQuery):
-    await call.message.edit_text("You selected something!")
-    await call.answer()
+@dp.callback_query()
+async def callback_handler(callback: CallbackQuery):
+    data = callback.data
+
+    if data == "back_main":
+        try:
+            await callback.message.delete()
+        except:
+            pass
+        await callback.message.answer(
+            "Main menu:",
+            reply_markup=get_main_menu()
+        )
+        await callback.answer()
+        return
 
     # ── Prepare common variables ─────────────────────────────────────────
     section_title = ""
@@ -218,5 +244,8 @@ async def main():
     )
 
 
-if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Bot stopped by user")
