@@ -348,13 +348,27 @@ async def callback_handler(callback: CallbackQuery):
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
+        # Body-г унших
+        body = await request.body()
+        if not body:
+            logger.warning("Empty webhook body received")
+            return {"ok": True}  # Telegram-д 200 буцаах ёстой
+
         update_json = await request.json()
+        logger.info(f"Received webhook update: {update_json}")
+
         update = Update.de_json(update_json, bot)
+        if update is None:
+            logger.error("Update.de_json returned None - invalid update format")
+            return {"ok": True}
+
         await dp.feed_update(bot, update)
         return {"ok": True}
+
     except Exception as e:
-        logger.error(f"Webhook error: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        logger.exception(f"Webhook processing error: {e}")
+        # Telegram-д 200 буцаах ёстой (алдаа гарсан ч webhook амжилттай гэж тооцно)
+        return {"ok": True}
 
 
 # Startup-д
