@@ -360,7 +360,7 @@ async def webhook(request: Request):
 # Startup-д
 @app.on_event("startup")
 async def on_startup():
-    webhook_url = "https://khanagar-bot.onrender.com"
+    webhook_url = "https://khanagar-bot.onrender.com/webhook"
     await bot.set_webhook(
         url=webhook_url,
         drop_pending_updates=True
