@@ -345,7 +345,7 @@ async def callback_handler(callback: CallbackQuery):
 async def webhook(request: Request):
     try:
         update_json = await request.json()
-        update = Update.de_json(update_json, bot)
+        update = Update.model_validate(update_json)
         await dp.feed_update(bot, update)
         return {"ok": True}
     except Exception as e:
