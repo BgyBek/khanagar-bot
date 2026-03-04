@@ -22,7 +22,6 @@ def get_main_menu():
     builder.button(text="🍳 Breakfast")
     builder.button(text="🌙 Dinner")
     builder.button(text="🍷 Drinks & Cocktails")
-    builder.button(text="ℹ️ About")
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
