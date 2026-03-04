@@ -1,6 +1,5 @@
 import asyncio
 import logging
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
 from aiogram import Bot, Dispatcher
@@ -9,28 +8,25 @@ from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 
-# ── Logging ────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── BOT TOKEN ───────────────────────────────────────
 TOKEN = "8627766359:AAG7H3VVYerh3MttM41RJaFM6z2OmwXj96M"
-
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 app = FastAPI(title="Khanagar Bot Webhook")
 
-# ── Main bottom menu ─────────────────────────────────────────────────────
+# Main bottom menu
 def get_main_menu():
     builder = ReplyKeyboardBuilder()
     builder.button(text="🍳 Breakfast")
     builder.button(text="🌙 Dinner")
     builder.button(text="🍷 Drinks & Cocktails")
+    builder.button(text="ℹ️ About")
     builder.adjust(2)
-    return builder.as_markup(resize_keyboard=True, one_time_keyboard=False)
+    return builder.as_markup(resize_keyboard=True)
 
-
-# ── Inline sub-menu for each category ────────────────────────────────────
+# Inline category menu
 def get_category_inline(category: str):
     builder = InlineKeyboardBuilder()
 
@@ -39,16 +35,16 @@ def get_category_inline(category: str):
         builder.button(text="Hot from kitchen", callback_data="bf_hot")
 
     elif category == "dinner":
-        builder.button(text="Starters",       callback_data="dn_starters")
-        builder.button(text="Main dishes",    callback_data="dn_mains")
-        builder.button(text="Desserts",       callback_data="dn_desserts")
+        builder.button(text="Starters", callback_data="dn_starters")
+        builder.button(text="Main dishes", callback_data="dn_mains")
+        builder.button(text="Desserts", callback_data="dn_desserts")
 
     elif category == "drinks":
         builder.button(text="Signature Cocktails", callback_data="dr_cocktails")
-        builder.button(text="Wine by the Glass (150ml)",   callback_data="dr_wine_glass")
-        builder.button(text="Wine by the Bottle (750ml)",  callback_data="dr_wine_bottle")
-        builder.button(text="Spirits (50ml pour)",         callback_data="dr_spirits")
-        builder.button(text="Beer / Cider / Soft Drinks",  callback_data="dr_beer_soft")
+        builder.button(text="Wine by the Glass (150ml)", callback_data="dr_wine_glass")
+        builder.button(text="Wine by the Bottle (750ml)", callback_data="dr_wine_bottle")
+        builder.button(text="Spirits (50ml pour)", callback_data="dr_spirits")
+        builder.button(text="Beer / Cider / Soft Drinks", callback_data="dr_beer_soft")
 
     builder.adjust(2)
     builder.button(text="← Back to main", callback_data="back_main")
@@ -348,39 +344,20 @@ async def callback_handler(callback: CallbackQuery):
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
-        # Body-г унших
-        body = await request.body()
-        if not body:
-            logger.warning("Empty webhook body received")
-            return {"ok": True}  # Telegram-д 200 буцаах ёстой
-
         update_json = await request.json()
-        logger.info(f"Received webhook update: {update_json}")
-
         update = Update.de_json(update_json, bot)
-        if update is None:
-            logger.error("Update.de_json returned None - invalid update format")
-            return {"ok": True}
-
         await dp.feed_update(bot, update)
         return {"ok": True}
-
     except Exception as e:
-        logger.exception(f"Webhook processing error: {e}")
-        # Telegram-д 200 буцаах ёстой (алдаа гарсан ч webhook амжилттай гэж тооцно)
-        return {"ok": True}
-
+        logger.error(f"Webhook error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Startup-д
 @app.on_event("startup")
 async def on_startup():
-    webhook_url = "https://khanagar-bot.onrender.com/webhook"
-    await bot.set_webhook(
-        url=webhook_url,
-        drop_pending_updates=True
-    )
+    webhook_url = "https://khanagar-bot.onrender.com/webhook"  
+    await bot.set_webhook(url=webhook_url, drop_pending_updates=True)
     logger.info(f"Webhook set to: {webhook_url}")
-
 
 async def main():
     pass
